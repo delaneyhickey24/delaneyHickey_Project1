@@ -55,3 +55,47 @@ Imagine a scenario where 'union' incorrectly returns an aliased view or directly
 1. An administrator creates an operational access list 'activeCrew' by calling 'alpha.union(beta)'.
 2. Because of an aliasing flaw, the internal storage buffer of 'activeCrew' is directly linked to or shares elements with 'alpha'.
 4. Due to memory aliasing, the entries inside 'activeCrew' are silently altered or cleared completely in tandem. The emergency response team loses their structural lookup capabilities, locking personnel out of safe zones during a crisis. 
+
+## 5. ResizableArraySet Checkpoint Trace Matrix
+This execution trace maps a small internal capacity buffer initialized to a starting length of 2 (`capacity = 2`), forcing rapid resizing and validation of our packing states.
+
+| Step | Operation Called | Internal Buffer Array State `[Idx 0, Idx 1, Idx 2, ...]` | Size | Capacity | Invariant Probed & Verified |
+|:---|:---|:---|:---|:---|:---|
+| 0 | Initial State | `[null, null]` | 0 | 2 | **RI-1 & RI-3**: Empty state has valid bounds; all slots null. |
+| 1 | `add("A12")` | `["A12", null]` | 1 | 2 | **RI-1**: Packed contiguously. No gaps. |
+| 2 | `add("B07")` | `["A12", "B07"]` | 2 | 2 | **RI-2**: Reached capacity threshold cleanly without overflow. |
+| 3 | `add("B07")` *(Duplicate)* | `["A12", "B07"]` | 2 | 2 | **RI-4**: Uniqueness verified. Set remains unchanged, returns false. |
+| 4 | `add("C31")` *(Forces Resize 1)* | `["A12", "B07", "C31", null]` | 3 | 4 | **RI-1 & RI-2**: Array doubled to 4. Elements remain packed. |
+| 5 | `add("D04")` | `["A12", "B07", "C31", "D04"]` | 4 | 4 | **RI-2**: Reached secondary upper capacity threshold. |
+| 6 | `add("E18")` *(Forces Resize 2)* | `["A12", "B07", "C31", "D04", "E18", null, null, null]` | 5 | 8 | **Dynamic Growth**: Array doubled to 8. Confirms two resizes success. |
+| 7 | `add("A12")` *(Duplicate post-resize)* | `["A12", "B07", "C31", "D04", "E18", null, null, null]` | 5 | 8 | **RI-4**: Uniqueness remains intact across expanded boundaries. |
+| 8 | `remove("A12")` *(Remove First)* | `["E18", "B07", "C31", "D04", null, null, null, null]` | 4 | 8 | **RI-1 & RI-3**: Element `E18` fills gap. Index 4 set to null (No loitering). |
+| 9 | `remove("C31")` *(Remove Middle)*| `["E18", "B07", "D04", null, null, null, null, null]` | 3 | 8 | **RI-1 & RI-3**: Element `D04` fills gap. Index 3 set to null (No loitering). |
+| 10| `remove("D04")` *(Remove Last)*  | `["E18", "B07", null, null, null, null, null, null]` | 2 | 8 | **RI-1 & RI-3**: Index 2 explicitly set to null. Elements remain contiguous. |
+| 11| `add("A12")` *(Re-add)* | `["E18", "B07", "A12", null, null, null, null, null]` | 3 | 8 | **State Recovery**: Re-added item appends to next open index slot. |
+
+## 6. LinkedSet Structural Pointer Verification
+
+This analysis details node pointer adjustments during precise extraction sequences, noting the catastrophic reference breaks to guard against.
+
+### Structural Scenarios Trace
+
+#### Scenario A: Removing the Head Node
+*   **Initial Chain State**: `headNode ➔ [Node1: "A12"] ➔ [Node2: "B07"] ➔ [Node3: "C31"] ➔ null`
+*   **Correct Pointer Update**: `headNode = headNode.next;`
+*   **Final Chain State**: `headNode ➔ [Node2: "B07"] ➔ [Node3: "C31"] ➔ null`
+*   **The Catastrophic Mutation Bug**: Accidentally setting `headNode = null;` or execution of `headNode.next = null;`. Doing so would permanently orphan the subsequent links (`Node2` and `Node3`), rendering the rest of the valid database structure unrecoverable in memory.
+
+#### Scenario B: Removing a Middle Node (Targeting "B07")
+*   **Initial Chain State**: `headNode ➔ [Node1: "A12"] ➔ [Node2: "B07"] ➔ [Node3: "C31"] ➔ null`
+*   **Tracking Trackers**: `previousNode` points to `Node1`, `currentNode` points to `Node2`.
+*   **Correct Pointer Update**: `previousNode.next = currentNode.next;`
+*   **Final Chain State**: `headNode ➔ [Node1: "A12"] ➔ [Node3: "C31"] ➔ null`
+*   **The Catastrophic Mutation Bug**: Assigning `currentNode.next = previousNode;` (creating a cyclic trap loop) or setting `previousNode.next = null;`. severing the reference using `null` targets splits the chain into an unlinked sequence, throwing away `Node3` entirely.
+
+#### Scenario C: Removing the Last Node (Tail Node)
+*   **Initial Chain State**: `headNode ➔ [Node1: "A12"] ➔ [Node2: "B07"] ➔ [Node3: "C31"] ➔ null`
+*   **Tracking Trackers**: `previousNode` points to `Node2`, `currentNode` points to `Node3`.
+*   **Correct Pointer Update**: `previousNode.next = currentNode.next;` (which resolves cleanly to `null`).
+*   **Final Chain State**: `headNode ➔ [Node1: "A12"] ➔ [Node2: "B07"] ➔ null`
+*   **The Catastrophic Mutation Bug**: Executing `headNode.next = null;` during secondary iterations. This bypasses the node-specific trackers and wipes out all nodes following the head element (`Node2` disappears alongside `Node3`), violating the entire state preservation rule.
