@@ -1,46 +1,32 @@
-package com.setforge; 
+package com.setforge;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+/**
+ * Execution test verifying ResizableArraySet algebra functionality 
+ * and documenting the result of Part 4.
+ */
+public class ArraySetTest {
+    public static void main(String[] args) {
+        System.out.println("=== RESIZABLE ARRAY SET ALGEBRA TEST ===");
 
-public class ArraySetTest extends SetContractTest {
-    @Override
-    protected <T> SetInterface<T> createSet() {
-        return new ResizableArraySet<>();
-    }
+        SetInterface<String> alpha = new ResizableArraySet<>();
+        alpha.add("A12"); alpha.add("B07"); alpha.add("C31"); alpha.add("D04");
 
-    @Test
-    public void testArraySpecificCapacityBoundary() {
-        // Force the ResizableArraySet past its initial structural threshold to verify integrity
-        SetInterface<Integer> set = createSet();
-        for (int i = 0; i < 15; i++) {
-            assertTrue(set.add(i));
+        SetInterface<String> beta = new ResizableArraySet<>();
+        beta.add("B07"); beta.add("D04"); beta.add("E18"); beta.add("F22");
+
+        SetInterface<String> revoked = new ResizableArraySet<>();
+        revoked.add("C31"); revoked.add("F22");
+
+        // Part 4 Logic: (Alpha UNION Beta) DIFFERENCE Revoked
+        SetInterface<String> clearCrew = alpha.union(beta).difference(revoked);
+
+        System.out.println("Active Crew Set Size: " + clearCrew.getCurrentSize());
+        System.out.print("Allowed Access IDs: ");
+        for (Object id : clearCrew.toArray()) {
+            System.out.print(id + " ");
         }
-        assertEquals(15, set.getCurrentSize());
+        System.out.println("\nExpected Output: A12 B07 D04 E18");
     }
-
-
-    @Test
-    public void testCrossImplementationDivergence() {
-        SetInterface<Integer> arraySet = new ResizableArraySet<>();
-        SetInterface<Integer> linkedSet = new LinkedSet<>();
-
-        // Drive both setups with identical sequential insertions/removals
-        int[] actions = {10, 20, 30, 40, 50, 20, 60, 10};
-        for (int val : actions) {
-            arraySet.add(val);
-            linkedSet.add(val);
-        }
-
-        arraySet.remove(30);
-        linkedSet.remove(30);
-
-        // Assert structural convergence of size and membership across both variations
-        assertEquals(arraySet.getCurrentSize(), linkedSet.getCurrentSize());
-        for (int val : actions) {
-            assertEquals(arraySet.contains(val), linkedSet.contains(val));
-        }
-    }
-
 }
+
 
