@@ -99,3 +99,49 @@ This analysis details node pointer adjustments during precise extraction sequenc
 *   **Correct Pointer Update**: `previousNode.next = currentNode.next;` (which resolves cleanly to `null`).
 *   **Final Chain State**: `headNode ➔ [Node1: "A12"] ➔ [Node2: "B07"] ➔ null`
 *   **The Catastrophic Mutation Bug**: Executing `headNode.next = null;` during secondary iterations. This bypasses the node-specific trackers and wipes out all nodes following the head element (`Node2` disappears alongside `Node3`), violating the entire state preservation rule.
+
+## 7. Set Algebra Evaluation: Crew Access-Control Scenario
+
+### Problem Formulation
+Given the crew access groupings:
+*   **Alpha Crew (\(\alpha\))**: `{A12, B07, C31, D04}`
+*   **Beta Crew (\(\beta\))**: `{B07, D04, E18, F22}`
+*   **Revoked Badges**: `{C31, F22}`
+
+### Query Logic Implementation
+To discover keys allowed at either station but clear of revocation status, we evaluate:
+\[\text{ValidAccess} = (\alpha \text{ UNION } \beta) \text{ DIFFERENCE } \text{revoked}\]
+
+### Execution Breakdown
+1. **Compute Union (\(\alpha \cup \beta\))**:  
+   Combining all unique entries across both pools yields an intermediate tracking set:  
+   `{A12, B07, C31, D04, E18, F22}`
+2. **Compute Directional Difference (Intermediate Set \(\setminus\) Revoked)**:  
+   We sequentially eliminate every badge found within the `revoked` list.
+    *   Exclude `C31` (Revoked)
+    *   Exclude `F22` (Revoked)
+
+### Final Answer Set
+The final verified group allowed system access is:  
+**`{A12, B07, D04, E18}`**
+
+## 8. Mutation Testing Challenge Log
+
+A temporary tracking branch named `seeded-bug-challenge` was checked out to evaluate our suite's diagnostic coverage. Three distinct defects were intentionally introduced into production files to see if our tests caught them.
+
+### Defect 1: Prevented size decrement during object removal
+*   **Location**: `ResizableArraySet.java` inside `remove(T anEntry)`
+*   **Seeded Bug**: Commented out the `size--;` instruction.
+*   **Result**: **FAILED**. Caught immediately by `testBoundaryEmptyAndSingleton` and `testRandomizedOperationsSequence`. The test suite threw an assertion mismatch error because the logical size field stayed tracking above the real structural element count.
+
+### Defect 2: Used Reference Identity instead of Structural Equality
+*   **Location**: `LinkedSet.java` inside `contains(T anEntry)`
+*   **Seeded Bug**: Swapped `currentNode.data.equals(anEntry)` to `currentNode.data == anEntry`.
+*   **Result**: **FAILED**. Caught directly by `testStructuralEqualityNotIdentity`. The collection began reporting that an equal but memory-distinct badge reference was missing from the tracking records.
+
+### Defect 3: Loitering Preservation / Failure to Null Array Slot
+*   **Location**: `ResizableArraySet.java` inside `remove()`
+*   **Seeded Bug**: Commented out the `setArray[targetIndex] = null;` structural clearance line.
+*   **Result**: **FAILED**. Caught via a specialized memory extraction snapshot test verifying that references at index slots `>= size` are strictly cleared out. Without this verification, the system continues leaking out-of-scope pointers.
+
+*Note: All code changes were safely rolled back, and code on the main deployment path remains completely pristine.*

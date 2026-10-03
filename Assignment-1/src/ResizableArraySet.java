@@ -127,19 +127,61 @@ public class ResizableArraySet<T> implements SetInterface<T> {
         this.setArray = Arrays.copyOf(this.setArray, newCapacity);
     }
 
-    // --- Placeholders for Step 4 Algebra Operations ---
-    @Override
+        @Override
     public SetInterface<T> union(SetInterface<T> otherSet) {
-        throw new UnsupportedOperationException("Union operation will be implemented in Step 4.");
+        if (otherSet == null) {
+            throw new IllegalArgumentException("Cannot compute union with a null set.");
+        }
+        
+        SetInterface<T> result = new ResizableArraySet<>();
+        
+        // Add elements from this set
+        for (T item : this.toArray()) {
+            result.add(item);
+        }
+        
+        // Add elements from the other set (duplicates are handled by add)
+        for (T item : otherSet.toArray()) {
+            result.add(item);
+        }
+        
+        return result;
     }
 
     @Override
     public SetInterface<T> intersection(SetInterface<T> otherSet) {
-        throw new UnsupportedOperationException("Intersection operation will be implemented in Step 4.");
+        if (otherSet == null) {
+            throw new IllegalArgumentException("Cannot compute intersection with a null set.");
+        }
+        
+        SetInterface<T> result = new ResizableArraySet<>();
+        
+        // Only add elements present in both sets
+        for (T item : this.toArray()) {
+            if (otherSet.contains(item)) {
+                result.add(item);
+            }
+        }
+        
+        return result;
     }
 
     @Override
     public SetInterface<T> difference(SetInterface<T> otherSet) {
-        throw new UnsupportedOperationException("Difference operation will be implemented in Step 4.");
+        if (otherSet == null) {
+            throw new IllegalArgumentException("Cannot compute difference with a null set.");
+        }
+        
+        SetInterface<T> result = new ResizableArraySet<>();
+        
+        // Add elements that are in this set but NOT in the other set
+        for (T item : this.toArray()) {
+            if (!otherSet.contains(item)) {
+                result.add(item);
+            }
+        }
+        
+        return result;
     }
+
 }

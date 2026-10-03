@@ -135,20 +135,57 @@ public class LinkedSet<T> implements SetInterface<T> {
         return result;
     }
 
-    // --- Placeholders for Step 4 Algebra Operations ---
-    @Override
+        @Override
     public SetInterface<T> union(SetInterface<T> otherSet) {
-        throw new UnsupportedOperationException("Union operation will be implemented in Step 4.");
+        if (otherSet == null) {
+            throw new IllegalArgumentException("Cannot compute union with a null set.");
+        }
+        
+        SetInterface<T> result = new LinkedSet<>();
+        
+        for (T item : this.toArray()) {
+            result.add(item);
+        }
+        for (T item : otherSet.toArray()) {
+            result.add(item);
+        }
+        
+        return result;
     }
 
     @Override
     public SetInterface<T> intersection(SetInterface<T> otherSet) {
-        throw new UnsupportedOperationException("Intersection operation will be implemented in Step 4.");
+        if (otherSet == null) {
+            throw new IllegalArgumentException("Cannot compute intersection with a null set.");
+        }
+        
+        SetInterface<T> result = new LinkedSet<>();
+        
+        for (T item : this.toArray()) {
+            if (otherSet.contains(item)) {
+                result.add(item);
+            }
+        }
+        
+        return result;
     }
 
     @Override
     public SetInterface<T> difference(SetInterface<T> otherSet) {
-        throw new UnsupportedOperationException("Difference operation will be implemented in Step 4.");
+        if (otherSet == null) {
+            throw new IllegalArgumentException("Cannot compute difference with a null set.");
+        }
+        
+        SetInterface<T> result = new LinkedSet<>();
+        
+        for (T item : this.toArray()) {
+            if (!otherSet.contains(item)) {
+                result.add(item);
+            }
+        }
+        
+        return result;
     }
+
 }
 
