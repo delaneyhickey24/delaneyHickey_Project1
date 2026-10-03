@@ -1,4 +1,4 @@
-package com.setforge;
+
 
 /**
  * Execution test verifying LinkedSet algebra functionality 
@@ -18,13 +18,17 @@ public class LinkedSetTest {
         revoked.add("C31"); revoked.add("F22");
 
         // Part 4 Logic: (Alpha UNION Beta) DIFFERENCE Revoked
-        SetInterface<String> clearCrew = alpha.union(beta).difference(revoked);
+        SetInterface<?> clearCrew = alpha.union(beta).difference(revoked);
 
-        System.out.println("Active Crew Set Size: " + clearCrew.getCurrentSize());
+
+                System.out.println("Active Crew Set Size: " + clearCrew.getCurrentSize());
         System.out.print("Allowed Access IDs: ");
+        
+        // Loop using Object instead of String to prevent ClassCastException
         for (Object id : clearCrew.toArray()) {
             System.out.print(id + " ");
         }
-        System.out.println("\nExpected Output: E18 D04 B07 A12 (Order may vary due to head insertion)");
+        System.out.println("\nExpected Output: E18 D04 B07 A12 (Order may vary)");
+
     }
 }

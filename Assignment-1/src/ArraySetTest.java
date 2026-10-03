@@ -1,4 +1,3 @@
-package com.setforge;
 
 /**
  * Execution test verifying ResizableArraySet algebra functionality 
@@ -18,14 +17,18 @@ public class ArraySetTest {
         revoked.add("C31"); revoked.add("F22");
 
         // Part 4 Logic: (Alpha UNION Beta) DIFFERENCE Revoked
-        SetInterface<String> clearCrew = alpha.union(beta).difference(revoked);
+        SetInterface<?> clearCrew = alpha.union(beta).difference(revoked);
 
-        System.out.println("Active Crew Set Size: " + clearCrew.getCurrentSize());
+
+                System.out.println("Active Crew Set Size: " + clearCrew.getCurrentSize());
         System.out.print("Allowed Access IDs: ");
+        
+        // Loop using Object instead of String to prevent ClassCastException
         for (Object id : clearCrew.toArray()) {
             System.out.print(id + " ");
         }
         System.out.println("\nExpected Output: A12 B07 D04 E18");
+
     }
 }
 
